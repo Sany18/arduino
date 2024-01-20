@@ -40,9 +40,11 @@ int maxY = 170;
 int maxX = 320;
 
 int iteration = 1;
+const int stepsPerCycle = 10;
 
 void setup() {
   TFTscreen.init(maxY, maxX);
+  TFTscreen.setRotation(1);
   drawSky();
   drawGround();
 }
@@ -82,25 +84,25 @@ void drawSky() {
   TFTscreen.fillRect(0, 0, maxX, maxY/2, SKY_COLOR);
 
   // sun
-  TFTscreen.drawCircle(80, 50, 26, SUN_COLOR);
+  TFTscreen.fillCircle(maxX/2, 50, 26, SUN_COLOR);
 
   // sun lines
-  TFTscreen.fillRect(54, 22, 53, 6, SKY_COLOR);
-  TFTscreen.fillRect(54, 32, 53, 4, SKY_COLOR);
-  TFTscreen.fillRect(54, 41, 53, 3, SKY_COLOR);
-  TFTscreen.fillRect(54, 50, 53, 2, SKY_COLOR);
-  TFTscreen.fillRect(54, 58, 53, 1, SKY_COLOR);
+  TFTscreen.fillRect(maxX/2 - 26, 22, 53, 6, SKY_COLOR);
+  TFTscreen.fillRect(maxX/2 - 26, 32, 53, 4, SKY_COLOR);
+  TFTscreen.fillRect(maxX/2 - 26, 41, 53, 3, SKY_COLOR);
+  TFTscreen.fillRect(maxX/2 - 26, 50, 53, 2, SKY_COLOR);
+  TFTscreen.fillRect(maxX/2 - 26, 58, 53, 1, SKY_COLOR);
 
   // left mountains
   int groundHeight = 63;
-  drawMountain(-10, 50, 12, 0x4007);
-  drawMountain(15, 30, 18, 0x4007);
-  drawMountain(35, 20, 10, 0x3005);
+  drawMountain(maxX/2 - 90, 50, 12, 0x4007);
+  drawMountain(maxX/2 - 65, 30, 18, 0x4007);
+  drawMountain(maxX/2 - 45, 20, 10, 0x3005);
 
   // right mountains
-  drawMountain(102, 20, 10, 0x4007);
-  drawMountain(130, 30, 20, 0x0801);
-  drawMountain(115, 18, 5, 0x2001);
+  drawMountain(maxX/2 + 22, 20, 10, 0x4007);
+  drawMountain(maxX/2 + 50, 30, 20, 0x0801);
+  drawMountain(maxX/2 + 35, 18, 5, 0x2001);
 }
 
 void drawGround() {
@@ -109,10 +111,10 @@ void drawGround() {
 
 void drawMountain(int positionX, int width, int height, int color) {
   int groundHeight = maxY/2 - 1;
-  TFTscreen.drawTriangle(positionX, groundHeight, positionX + width / 2, groundHeight - height, positionX + width, groundHeight, 0x4007);
+  TFTscreen.fillTriangle(positionX, groundHeight, positionX + width / 2, groundHeight - height, positionX + width, groundHeight, color);
 }
 
 float getStepMultiplier(int _step) { // 0...9999 to 0...1
-  int a = _step % 10;
+  int a = _step % stepsPerCycle;
   return a * 0.1;
 }
