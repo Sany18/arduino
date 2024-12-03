@@ -19,8 +19,8 @@ Adafruit ST7735 and ST7789 Library
 |---------|-------------|
 | 3v3     | VCC         |
 | GND     | GND         |
-| GPIO9   | SCL (SCLK)  |
-| GPIO8   | SDA (MOSI)  |
+| GPIO1   | SCL (SCLK)  |
+| GPIO0   | SDA (MOSI)  |
 | RST     | RES         |
 | GPIO3   | DC          |
 | GPIO2   | CS          |
@@ -35,5 +35,6 @@ RGB565 color picker https://barth-dev.de/online/rgb565-color-picker/
 ### How it looks like
 ![How it looks like](./preview.jpg?raw=true)
 
-
+Troubleshooting
+- error 2: https://stackoverflow.com/questions/73923341/unable-to-flash-esp32-the-port-doesnt-exist
 
