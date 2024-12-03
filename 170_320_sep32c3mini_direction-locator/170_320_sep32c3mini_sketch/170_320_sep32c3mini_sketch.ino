@@ -52,22 +52,54 @@ int maxX = 320;
 // Button
 #define BUTTON_PIN 5
 #define DEBOUNCE_DELAY 500 // Debounce time in ms
-#define MODE_COUNT 2           // Number of modes
+#define MODE_COUNT 3           // Number of modes
 int currentMode = 0;       // Current mode
 unsigned long lastPress = 0; // Timestamp of last button press
 
 #define SECTION_HEIGHT (maxY / 3)
 
-// Drow round
+/////////////////////////
+// Speed of sound in m/s
+const float SPEED_OF_SOUND = 300.0;
+
+const int MIC_0_X = 60;
+const int MIC_0_Y = 150;
+const int MIC_1_X = 160;
+const int MIC_1_Y = 20;
+const int MIC_2_X = 260;
+const int MIC_2_Y = 150;
+
+const int micRealPosition0X = 0;
+const int micRealPosition0Y = 0;
+const int micRealPosition1X = 20;
+const int micRealPosition1Y = 36;
+const int micRealPosition2X = 40;
+const int micRealPosition2Y = 0;
+
+const int SOUND_THRESHOLD = 10;
+
+volatile float mic0Time = 0;
+volatile float mic1Time = 0;
+volatile float mic2Time = 0;
+
+// To redraw only circle
+int prevSourceX = -1;
+int prevSourceY = -1;
+
+/////////////////////////
+/// Helpers
+/////////////////////////
 void drawRound() {
   TFTscreen.fillCircle(maxX/2, maxY/2, maxY/2, YELLOW);
 }
 
-// Reset screen
 void resetScreen() {
   TFTscreen.fillScreen(0x0000);
 }
 
+/////////////////////////
+/// Draw tests
+/////////////////////////
 void drawTestWaves() {
   static uint16_t xPos = 0; // Horizontal position on the screen
 
@@ -95,7 +127,6 @@ void drawTestWaves() {
     xPos = 0; // Wrap around
   }
 }
-
 
 void showMicroLog() {
   TFTscreen.setCursor(0, 0);
@@ -125,6 +156,103 @@ void showButtonLog() {
   TFTscreen.fillRect(0, 0, 120, 20, BLACK);
 }
 
+
+
+
+
+void constrainLineToCircle(int &x, int &y, int centerX, int centerY, int radius) {
+  float dx = x - centerX;
+  float dy = y - centerY;
+  float distance = sqrt(dx * dx + dy * dy);
+
+  if (distance > radius) {
+    float scale = radius / distance;
+    x = centerX + dx * scale;
+    y = centerY + dy * scale;
+  }
+}
+
+void calculateSoundSource() {
+  // Calculate time differences
+  float t12 = (mic1Time - mic0Time); // Time difference between mic1 and mic2
+  float t13 = (mic2Time - mic0Time); // Time difference between mic1 and mic3
+
+  // Calculate the sound source position using triangulation
+  float A = 2 * (micRealPosition1X - micRealPosition0X);
+  float B = 2 * (micRealPosition1Y - micRealPosition0Y);
+  float C = 2 * (micRealPosition2X - micRealPosition0X);
+  float D = 2 * (micRealPosition2Y - micRealPosition0Y);
+
+  float E = t12 * t12 - micRealPosition1X * micRealPosition1X - micRealPosition1Y * micRealPosition1Y + micRealPosition0X * micRealPosition0X + micRealPosition0Y * micRealPosition0Y;
+  float F = t13 * t13 - micRealPosition2X * micRealPosition2X - micRealPosition2Y * micRealPosition2Y + micRealPosition0X * micRealPosition0X + micRealPosition0Y * micRealPosition0Y;
+
+  float denominator = A * D - B * C;
+  if (denominator == 0) {
+    // Avoid division by zero
+    return;
+  }
+
+  int sourceX = (E * D - B * F) / denominator;
+  int sourceY = (A * F - E * C) / denominator;
+
+    // TFTscreen.setCursor(0, 0);
+    // TFTscreen.setTextColor(WHITE);
+    // TFTscreen.print("T1: ");
+    // TFTscreen.println(t12);
+    // TFTscreen.print("T2: ");
+    // TFTscreen.println(t13);
+    // TFTscreen.fillRect(0, 0, maxX, 50, BLACK);
+
+  // Constrain values within the screen bounds
+  sourceX = constrain(sourceX, 0, maxX);
+  sourceY = constrain(sourceY, 0, maxY);
+
+  // Constrain the line to the circle
+  constrainLineToCircle(sourceX, sourceY, maxX / 2, maxY / 2, maxY / 2);
+
+  // Erase previous line
+  if (prevSourceX >= 0 && prevSourceY >= 0) {
+    TFTscreen.drawLine(maxX / 2, maxY / 2, prevSourceX, prevSourceY, BLACK); // Draw over the old line
+  }
+
+  // Draw the new line
+  TFTscreen.drawLine(maxX / 2, maxY / 2, sourceX, sourceY, RED);
+
+  // Update previous position
+  prevSourceX = sourceX;
+  prevSourceY = sourceY;
+}
+
+void soundDirectionDetector() {
+  // Read microphone signals
+  float mic0Value = 4095 - analogRead(MIC0_PIN);
+  float mic1Value = 4095 - analogRead(MIC1_PIN);
+  float mic2Value = 4095 - analogRead(MIC2_PIN);
+
+  if (mic0Value > SOUND_THRESHOLD) {
+    mic0Time = millis();
+  }
+
+  if (mic1Value > SOUND_THRESHOLD) {
+    mic1Time = millis();
+  }
+
+  if (mic2Value > SOUND_THRESHOLD) {
+    mic2Time = millis();
+  }
+
+  if (mic0Time > 0 && mic1Time > 0 && mic2Time > 0) {
+    // If all timestamps are captured, calculate position
+    calculateSoundSource();
+
+    // Reset timestamps for next detection
+    mic0Value = mic1Value = mic2Value = 0;
+  }
+}
+
+
+
+
 /////////////////////////
 /// Setup
 /////////////////////////
@@ -137,6 +265,9 @@ void setup() {
   // drawRound();
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  // For 0 mode
+  TFTscreen.drawCircle(maxX/2, maxY/2, maxY/2, YELLOW);
 }
 
 /////////////////////////
@@ -149,7 +280,12 @@ void loop() {
     if (buttonValue == 1) {
       currentMode++;
       if (currentMode > MODE_COUNT) {
+        resetScreen();
         currentMode = 0;
+
+        if (currentMode == 0) {
+          TFTscreen.drawCircle(maxX/2, maxY/2, maxY/2, YELLOW);
+        }
       }
       lastPress = millis();
     }
@@ -157,12 +293,15 @@ void loop() {
 
   switch (currentMode) {
     case 0:
-      drawTestWaves();
+      soundDirectionDetector();
       break;
     case 1:
-      showMicroLog();
+      drawTestWaves();
       break;
     case 2:
+      showMicroLog();
+      break;
+    case 3:
       showButtonLog();
       break;
   }
