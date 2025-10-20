@@ -1,3 +1,5 @@
+// Required by Arduino framework, even if unused
+void loop() {}
 /*
  * The board: esp32 s3 wroom 1 n16r8
  *
@@ -25,6 +27,20 @@
   SD_CS  → GPIO 12
  */
 
+// Button positions:
+//    __________
+// S3|          |S4
+// S2|  display |S5
+// S1|__________|S6
+// | - battery  + |
+//
+// --- Notes ---
+// #ifndef LED_BUILTIN
+//   #define LED_BUILTIN 2
+// #endif
+//
+// Default text size 5x7+1 (space)
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -32,6 +48,7 @@
 #include <stddef.h>
 #include <WiFi.h>
 #include "env.h"
+#include <Ticker.h>
 
 // --- Subclass for custom ILI9341 overrides ---
 #define MADCTL_MX  0x40
@@ -106,23 +123,84 @@ public:
 
 #define BUTTON_PIN 1
 
-// Use runtime screen dimensions provided by the driver after init/rotation
+// Globals
 int SCREEN_WIDTH = 0;
 int SCREEN_HEIGHT = 0;
-
-// #ifndef LED_BUILTIN
-//   #define LED_BUILTIN 2
-// #endif
-
 MyILI9341 tft = MyILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RESET);
-
 int lastButton = -1;
 int lastWiFiStatus = -1;
+Ticker buttonTicker;
+Ticker wifiReconnectTicker;
 
-// Default text size 5x7+1 (space)
+// Function declarations
+void displayWiFiStatus();
+int readButton();
+void pollButton();
+void reconnectWiFi();
+void onWiFiEvent(WiFiEvent_t event);
 
+void setup() {
+  Serial.begin(115200);
+  Serial.println("ESP32 TFT Display Test");
+
+  tft.begin();
+  tft.setRotation(2);
+  SCREEN_WIDTH = tft.width();
+  SCREEN_HEIGHT = tft.height();
+  tft.fillScreen(ILI9341_BLACK);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  // Register WiFi event handler
+  WiFi.onEvent(onWiFiEvent);
+
+  // Start button polling every 100ms
+  buttonTicker.attach_ms(100, pollButton);
+
+  // Start WiFi reconnect timer every 2s
+  wifiReconnectTicker.attach(2, reconnectWiFi);
+
+  lastWiFiStatus = WiFi.status();
+
+  // WiFi credentials from env.h
+  const char* ssid = WIFI_SSID;
+  const char* password = WIFI_PASSWORD;
+  WiFi.begin(ssid, password);
+  displayWiFiStatus();
+}
+
+// WiFi event handler
+void onWiFiEvent(WiFiEvent_t event) {
+  switch (event) {
+    case SYSTEM_EVENT_STA_CONNECTED:
+    case SYSTEM_EVENT_STA_GOT_IP:
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      displayWiFiStatus();
+      break;
+    default:
+      break;
+  }
+}
+
+// Poll button state
+void pollButton() {
+  int button = readButton();
+  if (button != lastButton) {
+    lastButton = button;
+    // Add display update for button here if needed
+  }
+}
+
+// Try to reconnect WiFi if disconnected
+void reconnectWiFi() {
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.reconnect();
+  }
+}
+
+// Display WiFi status on TFT
 void displayWiFiStatus() {
-  // Clear WiFi status area (below button info)
   tft.fillRect(0, 15, SCREEN_WIDTH, 30, ILI9341_BLACK);
   tft.setCursor(0, 15);
   tft.setTextSize(2);
@@ -142,12 +220,11 @@ void displayWiFiStatus() {
   }
 }
 
+// Read button ADC value and map to button number
 int readButton() {
   int adcValue = analogRead(BUTTON_PIN);
   Serial.print("ADC Value: ");
   Serial.println(adcValue);
-
-  // Map ADC value to button
   if (adcValue > 3700) return 1;    // S1
   if (adcValue > 3300) return 2;    // S2
   if (adcValue > 2500) return 3;    // S3
@@ -155,61 +232,4 @@ int readButton() {
   if (adcValue > 1850) return 5;    // S5
   if (adcValue > 1650) return 6;    // S6
   return -1;                        // No button pressed
-}
-
-void setup() {
-  lastWiFiStatus = WiFi.status();
-  Serial.begin(115200);
-  Serial.println("ESP32 TFT Display Test");
-
-  // WiFi credentials from env.h
-  const char* ssid = WIFI_SSID;
-  const char* password = WIFI_PASSWORD;
-
-  tft.begin();
-  tft.setRotation(2);
-  SCREEN_WIDTH = tft.width();
-  SCREEN_HEIGHT = tft.height();
-  tft.fillScreen(ILI9341_BLACK);
-
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-
-  // Start WiFi connection
-  WiFi.begin(ssid, password);
-  int wifiTries = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiTries < 40) { // ~20s timeout
-    displayWiFiStatus();
-    delay(500);
-    wifiTries++;
-  }
-  displayWiFiStatus(); // Show final status
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("\nWiFi connection failed.");
-  }
-}
-
-void loop() {
-  int button = readButton();
-  lastButton = button;
-
-  int currentWiFiStatus = WiFi.status();
-  static unsigned long lastReconnectAttempt = 0;
-  if (currentWiFiStatus != lastWiFiStatus) {
-    displayWiFiStatus();
-    lastWiFiStatus = currentWiFiStatus;
-  }
-
-  // If disconnected, try to reconnect every 2 seconds
-  if (currentWiFiStatus != WL_CONNECTED) {
-    unsigned long now = millis();
-    if (now - lastReconnectAttempt > 2000) {
-      WiFi.reconnect();
-      lastReconnectAttempt = now;
-    }
-  }
-
-  delay(100); // Small delay to debounce and reduce CPU load
 }
