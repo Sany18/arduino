@@ -59,3 +59,46 @@ $ pio run --target clean
 #### Chip select pins
 - TFT_CS → GPIO 15
 - SD_CS → GPIO 12
+
+==============
+/*
+ * The board: esp32 s3 wroom 1 n16r8
+ *
+ * Display: 2.4" SPI TFT 240x320, cd card, no touch
+ * Pins:
+  SCK (CLK)	GPIO14	SPI Clock
+  MOSI	    GPIO13	SPI Data
+  CS	      GPIO15	Chip Select display
+  DC	      GPIO2	  Data/Command
+  RESET	    GPIO4	  Reset
+  GND	      GND	    Ground
+  VCC	      3.3V
+ *
+ * Buttons: https://www.instructables.com/How-to-access-5-buttons-through-1-Arduino-input/
+ * Pins: GPIO1
+ *
+ * CD Card pins:
+  // SPI спільні:
+  MOSI → GPIO 13
+  MISO → GPIO 11
+  SCK  → GPIO 14
+
+  // CS різні:
+  TFT_CS → GPIO 15
+  SD_CS  → GPIO 12
+ */
+
+// Button positions:
+//    __________
+// S3|          |S4
+// S2|  display |S5
+// S1|__________|S6
+// | - battery  + |
+//
+// --- Notes ---
+// #ifndef LED_BUILTIN
+//   #define LED_BUILTIN 2
+// #endif
+//
+// Default text size 5x7+1 (space)
+

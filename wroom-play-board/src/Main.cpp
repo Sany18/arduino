@@ -1,118 +1,16 @@
 // Required by Arduino framework, even if unused
 void loop() {}
-/*
- * The board: esp32 s3 wroom 1 n16r8
- *
- * Display: 2.4" SPI TFT 240x320, cd card, no touch
- * Pins:
-  SCK (CLK)	GPIO14	SPI Clock
-  MOSI	    GPIO13	SPI Data
-  CS	      GPIO15	Chip Select display
-  DC	      GPIO2	  Data/Command
-  RESET	    GPIO4	  Reset
-  GND	      GND	    Ground
-  VCC	      3.3V
- *
- * Buttons: https://www.instructables.com/How-to-access-5-buttons-through-1-Arduino-input/
- * Pins: GPIO1
- *
- * CD Card pins:
-  // SPI спільні:
-  MOSI → GPIO 13
-  MISO → GPIO 11
-  SCK  → GPIO 14
-
-  // CS різні:
-  TFT_CS → GPIO 15
-  SD_CS  → GPIO 12
- */
-
-// Button positions:
-//    __________
-// S3|          |S4
-// S2|  display |S5
-// S1|__________|S6
-// | - battery  + |
-//
-// --- Notes ---
-// #ifndef LED_BUILTIN
-//   #define LED_BUILTIN 2
-// #endif
-//
-// Default text size 5x7+1 (space)
 
 #include <Arduino.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
 #include <stddef.h>
 #include <WiFi.h>
-#include "env.h"
 #include <Ticker.h>
-
-// --- Subclass for custom ILI9341 overrides ---
-#define MADCTL_MX  0x40
-#define MADCTL_MY  0x80
-#define MADCTL_MV  0x20
-#define MADCTL_BGR 0x08
-#define ILI9341_TFTWIDTH  240
-#define ILI9341_TFTHEIGHT 320
-#define ILI9341_MADCTL 0x36
-#define ILI9341_CASET  0x2A
-#define ILI9341_PASET  0x2B
-#define ILI9341_RAMWR  0x2C
-
-extern void SPI_WRITE16(uint16_t d);
-extern void writeCommand(uint8_t cmd);
-extern void sendCommand(uint8_t cmd, const uint8_t *data, uint8_t num);
-
-class MyILI9341 : public Adafruit_ILI9341 {
-public:
-  using Adafruit_ILI9341::Adafruit_ILI9341;
-  void setRotation(uint8_t m) override {
-    rotation = m % 4;
-    uint8_t madctl = 0;
-    switch (rotation) {
-      case 0:
-        madctl = (MADCTL_MV | MADCTL_MY | MADCTL_BGR);
-        _width  = ILI9341_TFTHEIGHT;
-        _height = ILI9341_TFTWIDTH;
-        break;
-      case 1:
-        madctl = (MADCTL_MX | MADCTL_MY | MADCTL_BGR);
-        _width  = ILI9341_TFTWIDTH;
-        _height = ILI9341_TFTHEIGHT;
-        break;
-      case 2:
-        madctl = (MADCTL_MV | MADCTL_MX | MADCTL_BGR);
-        _width  = ILI9341_TFTHEIGHT;
-        _height = ILI9341_TFTWIDTH;
-        break;
-      case 3:
-        madctl = (MADCTL_BGR);
-        _width  = ILI9341_TFTWIDTH;
-        _height = ILI9341_TFTHEIGHT;
-        break;
-    }
-    sendCommand(ILI9341_MADCTL, &madctl, 1);
-  }
-  void setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h) override {
-    // x=0,y=0 is top-left, x increases downward, y increases rightward
-    const uint16_t colstart = 0;
-    const uint16_t rowstart = 0;
-    uint16_t x0 = x + colstart;
-    uint16_t x1 = x + w - 1 + colstart;
-    uint16_t y0 = y + rowstart;
-    uint16_t y1 = y + h - 1 + rowstart;
-    writeCommand(ILI9341_CASET); // Column addr set
-    SPI_WRITE16(y0);
-    SPI_WRITE16(y1);
-    writeCommand(ILI9341_PASET); // Page addr set
-    SPI_WRITE16(x0);
-    SPI_WRITE16(x1);
-    writeCommand(ILI9341_RAMWR); // Write to RAM
-  }
-};
+#include "env.h"
+#include "menu.h"
+#include "MyILI9341.h"
+#include "display_helpers.h"
 
 // Define pins for TFT display
 #define TFT_CS    15
@@ -140,6 +38,8 @@ void reconnectWiFi();
 void onWiFiEvent(WiFiEvent_t event);
 
 void setup() {
+  // Initialize menu system
+  menuInit(&tft);
   Serial.begin(115200);
   Serial.println("ESP32 TFT Display Test");
 
@@ -148,9 +48,10 @@ void setup() {
   SCREEN_WIDTH = tft.width();
   SCREEN_HEIGHT = tft.height();
   tft.fillScreen(ILI9341_BLACK);
+  menuRender();
 
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, LOW); // LED off by default
 
   // Register WiFi event handler
   WiFi.onEvent(onWiFiEvent);
@@ -162,12 +63,6 @@ void setup() {
   wifiReconnectTicker.attach(2, reconnectWiFi);
 
   lastWiFiStatus = WiFi.status();
-
-  // WiFi credentials from env.h
-  const char* ssid = WIFI_SSID;
-  const char* password = WIFI_PASSWORD;
-  WiFi.begin(ssid, password);
-  displayWiFiStatus();
 }
 
 // WiFi event handler
@@ -186,37 +81,67 @@ void onWiFiEvent(WiFiEvent_t event) {
 // Poll button state
 void pollButton() {
   int button = readButton();
+  static bool lastWiFiState = false;
+  static bool lastLedState = false;
   if (button != lastButton) {
     lastButton = button;
-    // Add display update for button here if needed
+    // S4 = up, S5 = down, S6 = select, S1 = back
+    if (button == 4) {
+      menuUp();
+    } else if (button == 5) {
+      menuDown();
+    } else if (button == 6) {
+      menuSelect();
+      // Check WiFi state change
+      bool wifiState = menuIsWiFiEnabled();
+      if (wifiState != lastWiFiState) {
+        lastWiFiState = wifiState;
+        if (wifiState) {
+          WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+          delay(500);
+          displayWiFiStatus();
+        } else {
+          WiFi.disconnect();
+        }
+      }
+      // Check LED state change
+      bool ledState = menuIsLedEnabled();
+      if (ledState != lastLedState) {
+        lastLedState = ledState;
+        digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+      }
+    } else if (button == 1) {
+      menuBack();
+    }
   }
 }
 
 // Try to reconnect WiFi if disconnected
 void reconnectWiFi() {
-  if (WiFi.status() != WL_CONNECTED) {
+  // Only reconnect if WiFi is enabled in the menu
+  if (menuIsWiFiEnabled() && WiFi.status() != WL_CONNECTED) {
     WiFi.reconnect();
   }
 }
 
 // Display WiFi status on TFT
 void displayWiFiStatus() {
-  tft.fillRect(0, 15, SCREEN_WIDTH, 30, ILI9341_BLACK);
-  tft.setCursor(0, 15);
   tft.setTextSize(2);
-  if (WiFi.status() == WL_CONNECTED) {
-    tft.setTextColor(ILI9341_GREEN);
-    tft.print("WiFi: ");
-    tft.println(WiFi.SSID());
-    tft.setTextColor(ILI9341_WHITE);
-    tft.print("IP: ");
-    tft.println(WiFi.localIP());
-  } else if (WiFi.status() == WL_DISCONNECTED) {
-    tft.setTextColor(ILI9341_RED);
-    tft.println("WiFi: Disconnected");
+  if (menuIsWiFiEnabled()) {
+    if (WiFi.status() == WL_CONNECTED) {
+      displayWriteLine(&tft, 10, (String("WiFi: ") + WiFi.SSID()).c_str(), ILI9341_GREEN);
+      displayWriteLine(&tft, 11, (String("IP: ") + WiFi.localIP().toString()).c_str(), ILI9341_WHITE);
+    } else if (WiFi.status() == WL_DISCONNECTED) {
+      displayWriteLine(&tft, 10, "WiFi: Disconnected", ILI9341_RED);
+      displayWriteLine(&tft, 11, "", ILI9341_BLACK);
+    } else {
+      displayWriteLine(&tft, 10, "Connecting...", ILI9341_YELLOW);
+      displayWriteLine(&tft, 11, "", ILI9341_BLACK);
+    }
   } else {
-    tft.setTextColor(ILI9341_YELLOW);
-    tft.println("Connecting...");
+    // WiFi disabled, clear status area
+    displayWriteLine(&tft, 10, "", ILI9341_BLACK);
+    displayWriteLine(&tft, 11, "", ILI9341_BLACK);
   }
 }
 
