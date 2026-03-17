@@ -10,6 +10,8 @@
             "includePath": [
                 "/Users/alex/allProjs/arduino/wroom-play-board/include",
                 "/Users/alex/allProjs/arduino/wroom-play-board/src",
+                "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
                 "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit ILI9341",
                 "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit GFX Library",
                 "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit BusIO",
@@ -242,11 +244,9 @@
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SimpleBLE/src",
-                "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                 "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                 ""
@@ -256,6 +256,8 @@
                 "path": [
                     "/Users/alex/allProjs/arduino/wroom-play-board/include",
                     "/Users/alex/allProjs/arduino/wroom-play-board/src",
+                    "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                    "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
                     "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit ILI9341",
                     "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit GFX Library",
                     "/Users/alex/allProjs/arduino/wroom-play-board/.pio/libdeps/esp32-s3-wroom-1-n16r8/Adafruit BusIO",
@@ -488,11 +490,9 @@
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/SimpleBLE/src",
-                    "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                    "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                     "/Users/alex/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                     ""
