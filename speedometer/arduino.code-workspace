@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "chip-8-tail",
+			"path": "."
+		}
+	],
+	"settings": {}
+}
