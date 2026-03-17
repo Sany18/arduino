@@ -104,6 +104,73 @@ void initWebServer() {
     }
   );
   
+  // Receive system stats (POST)
+  server.on("/api/stats", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      // Parse JSON body
+      String body = "";
+      for (size_t i = 0; i < len; i++) {
+        body += (char)data[i];
+      }
+      
+      Serial.println("Received stats POST:");
+      Serial.println(body);
+      
+      // Simple JSON parsing for each stat
+      int cpu = 0, ram = 0, battery = 0, network = 0, disk = 0;
+      
+      // Extract CPU
+      int idx = body.indexOf("\"cpu\":");
+      if (idx != -1) {
+        int start = idx + 6;
+        int end = body.indexOf(",", start);
+        if (end == -1) end = body.indexOf("}", start);
+        cpu = body.substring(start, end).toInt();
+      }
+      
+      // Extract RAM
+      idx = body.indexOf("\"ram\":");
+      if (idx != -1) {
+        int start = idx + 6;
+        int end = body.indexOf(",", start);
+        if (end == -1) end = body.indexOf("}", start);
+        ram = body.substring(start, end).toInt();
+      }
+      
+      // Extract Battery
+      idx = body.indexOf("\"battery\":");
+      if (idx != -1) {
+        int start = idx + 10;
+        int end = body.indexOf(",", start);
+        if (end == -1) end = body.indexOf("}", start);
+        battery = body.substring(start, end).toInt();
+      }
+      
+      // Extract Network
+      idx = body.indexOf("\"network\":");
+      if (idx != -1) {
+        int start = idx + 10;
+        int end = body.indexOf(",", start);
+        if (end == -1) end = body.indexOf("}", start);
+        network = body.substring(start, end).toInt();
+      }
+      
+      // Extract Disk
+      idx = body.indexOf("\"disk\":");
+      if (idx != -1) {
+        int start = idx + 7;
+        int end = body.indexOf(",", start);
+        if (end == -1) end = body.indexOf("}", start);
+        disk = body.substring(start, end).toInt();
+      }
+      
+      // Update servos with new stats
+      setSystemStats(cpu, ram, battery, network, disk);
+      
+      request->send(200, "application/json", "{\"status\":\"ok\"}");
+    }
+  );
+  
   // Serve static files from SPIFFS
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   

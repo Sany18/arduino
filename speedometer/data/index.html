@@ -1,36 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32-S3 Speedometer</title>
-    <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-S3 Speedometer</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
-    <div class="container">
-        <h1>ESP32-S3 Speedometer</h1>
-        <div class="clock">
-            <h2>Clock</h2>
-            <p id="clock-display">--:--:--</p>
-        </div>
-        <div class="status">
-            <h2>Status</h2>
-            <p>Server: <span id="server-status">Checking...</span></p>
-            <p>Uptime: <span id="uptime">-</span> ms</p>
-        </div>
-        <div class="controls">
-            <h2>Controls</h2>
-            <button onclick="resetServos()">Reset Servos</button>
-            <button onclick="refreshStatus()">Refresh Status</button>
-        </div>
-        <div class="data">
-            <h2>Speedometer Data</h2>
-            <div id="data-display">
-                <p>Speed: <span id="speed">0</span> km/h</p>
-                <p>Distance: <span id="distance">0</span> km</p>
-            </div>
-        </div>
+  <div class="container">
+    <h1>ESP32-S3 Speedometer</h1>
+    <div class="clock">
+      <h2>Clock</h2>
+      <p id="clock-display">--:--:--</p>
     </div>
-    <script src="/app.js"></script>
+    <div class="status">
+      <h2>Status</h2>
+      <p>Server: <span id="server-status">Checking...</span></p>
+      <p>Uptime: <span id="uptime">-</span></p>
+    </div>
+    <div class="controls">
+      <h2>Controls</h2>
+      <button onclick="refreshStatus()">Refresh Status</button>
+    </div>
+  </div>
+  <script src="/app.js"></script>
 </body>
+
 </html>
