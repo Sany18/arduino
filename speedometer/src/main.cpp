@@ -2,9 +2,11 @@
 
 #include <Arduino.h>
 #include <TM1637.h>
+#include "webserver.h"
+#include "clock.h"
 
 // Servo 1
-const int B1_1 = 48;
+const int B1_1 = 13; //tmp (48)
 const int B2_1 = 47;
 const int B3_1 = 21;
 const int B4_1 = 11;
@@ -39,7 +41,7 @@ const int LED_PIN_4 = 37;
 const int LED_PIN_BACK_LEFT = 39;
 const int LED_PIN_BACK_RIGT = 38;
 
-const int servo1[] = {B7_2, B8_2, B5_2, B6_2}; // Physical servo 4
+const int servo1[] = {B7_2, B8_2, B5_2, B6_2}; // Physical servo 4 - TEMPORARILY DISABLED
 const int servo2[] = {B1_1, B2_1, B3_1, B4_1}; // Physical servo 1
 const int servo3[] = {B7_1, B8_1, B5_1, B6_1}; // Physical servo 2
 const int servo4[] = {B1_2, B2_2, B3_2, B4_2}; // Physical servo 3
@@ -82,17 +84,48 @@ void step(int s, const int pins[4]) {
   }
 }
 
+// Rotate servo by specified steps in given direction
+// pins: servo pin array [4]
+// steps: number of steps to rotate
+// forward: true for forward rotation, false for backward
+void rotateServo(const int pins[4], int steps, bool forward) {
+  static int position = 0;  // Track current position
+  
+  if (forward) {
+    // Forward rotation
+    for (int i = 0; i < steps; i++) {
+      step(position, pins);
+      position = (position + 1) % 400;  // Keep position in range 0-399
+      delay(3);
+    }
+  } else {
+    // Backward rotation
+    for (int i = 0; i < steps; i++) {
+      step(position, pins);
+      position = (position - 1 + 400) % 400;  // Keep position in range 0-399
+      delay(3);
+    }
+  }
+}
+
 // Reset all servos to position 0
 void resetAllServos() {
   const int* servos[] = {servo1, servo2, servo3, servo4, servo5};
   
-  for (int i = 0; i < 5; i++) {
-    for(int j = 399; j >= 0; j--) {
-      step(j, servos[i]);
-      delay(3);
-    }
-    delay(200);
-  }
+  rotateServo(servo1, 150, true);
+  rotateServo(servo1, 200, false);
+
+  rotateServo(servo2, 150, true);
+  rotateServo(servo2, 200, false);
+
+  rotateServo(servo3, 550, true);
+  rotateServo(servo3, 300, false);
+
+  rotateServo(servo4, 150, true);
+  rotateServo(servo4, 200, false);
+
+  rotateServo(servo5, 150, true);
+  rotateServo(servo5, 200, false);
   
   // Turn off all coils to save power
   for (int i = 0; i < 5; i++) {
@@ -107,6 +140,7 @@ void resetAllServos() {
 void enableBackLEDs() {
   digitalWrite(LED_PIN_BACK_LEFT, HIGH);
   digitalWrite(LED_PIN_BACK_RIGT, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);  // Test LED
 }
 
 void enableFrontLeds() {
@@ -124,93 +158,32 @@ void setup() {
   pinMode(B5_3, OUTPUT); pinMode(B6_3, OUTPUT); pinMode(B7_3, OUTPUT); pinMode(B8_3, OUTPUT);
   pinMode(LED_PIN_3, OUTPUT); pinMode(LED_PIN_1, OUTPUT); pinMode(LED_PIN_2, OUTPUT);
   pinMode(LED_PIN_4, OUTPUT); pinMode(LED_PIN_BACK_RIGT, OUTPUT); pinMode(LED_PIN_BACK_LEFT, OUTPUT);
+  // pinMode(LED_BUILTIN, OUTPUT);
   
   // Initialize 6-digit display
   display.begin(DISPLAY_CLK, DISPLAY_DIO, 6);
   display.setBrightness(7);
+  display.setDigitOrder(3, 4, 5, 0, 1, 2);
 
-  // resetAllServos();
+  // Initialize clock
+  initClock(&display);
+
   enableBackLEDs();
   enableFrontLeds();
+  
+  // Initialize web server
+  initWebServer();
+  resetAllServos();
 }
-
-// Test function for a single motor
-void testMotor(const int pins[4], int motorNum) {
-  // Display motor number
-  display.displayClear();
-  display.displayInt(motorNum);
-  
-  // Forward rotation
-  for(int i = 0; i < 400; i++) {
-    step(i, pins);
-    delay(3);
-  }
-  delay(150);
-  
-  // Backward rotation
-  for(int i = 399; i >= 0; i--) {
-    step(i, pins);
-    delay(3);
-  }
-  delay(150);
-}
-
-// void loop() {
-//   // Test all 6 digit positions
-//   display.displayClear();
-//   delay(500);
-  
-//   // Count 0-9 on all 6 digits
-//   for (int i = 0; i <= 9; i++) {
-//     display.displayClear();
-//     display.displayInt(i);
-//     delay(800);
-//   }
-  
-//   delay(500);
-  
-//   // Show 123456 (all 6 digits)
-//   display.displayClear();
-//   display.displayInt(123456);
-//   delay(2000);
-  
-//   // Show with decimal points at different positions
-//   for (int pos = 0; pos < 6; pos++) {
-//     uint8_t raw[6] = {1, 2, 3, 4, 5, 6};
-//     display.displayRaw(raw, pos);  // Decimal point at position
-//     delay(800);
-//   }
-  
-//   delay(500);
-  
-//   // Show 888888 (all segments lit)
-//   display.displayClear();
-//   display.displayInt(888888);
-//   delay(2000);
-  
-//   // Show time format: 12:34:56
-//   display.displayClear();
-//   uint8_t raw[6] = {1, 2, 3, 4, 5, 6};
-//   // Add dots after positions 1 and 3 (creates 12:34:56)
-//   raw[1] |= 0x80;  // Dot after 2
-//   raw[3] |= 0x80;  // Dot after 4
-//   display.displayRaw(raw, -1);
-//   delay(3000);
-  
-//   // Clear before LED test
-//   display.displayClear();
-  
-//   // Test LEDs sequentially
-//   for (int i = 0; i < 6; i++) {
-//     digitalWrite(ledPins[i], HIGH);
-//     delay(500);
-//     digitalWrite(ledPins[i], LOW);
-//     delay(500);
-//   }
-  
-//   delay(1000);
-// }
 
 void loop() {
-  // resetAllServos();
+  // Display time on TM1637
+  static unsigned long lastDisplayUpdate = 0;
+  if (millis() - lastDisplayUpdate >= 500) {  // Update display every 500ms
+    displayTime();
+    lastDisplayUpdate = millis();
+  }
+  
+  // Handle web server
+  handleWebServer();
 }

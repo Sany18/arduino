@@ -1,0 +1,5 @@
+# Images
+
+Place your image files here (.png, .jpg, .gif, .svg, etc.)
+
+Images will be accessible at: `http://<ESP32-IP>/images/<filename>`
